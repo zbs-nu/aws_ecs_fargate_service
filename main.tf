@@ -93,7 +93,6 @@ module "fargate_service_ecs_container_definition" {
       "awslogs-stream-prefix" = "ecs"
     }
   }
-  
 }
 
 
@@ -270,9 +269,9 @@ resource "aws_lb_listener_rule" "block_header_rule" {
   action {
     type = "fixed-response"
     fixed_response {
-      content_type = "text/plain"
-      message_body = "Invalid host header."
-      status_code = "400"
+      content_type  = "text/plain"
+      message_body  = "Invalid host header."
+      status_code   = "400"
     }
   }
 }
