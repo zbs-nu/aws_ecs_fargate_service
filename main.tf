@@ -1,0 +1,315 @@
+#####################################################
+################################ Data ###############
+#####################################################
+
+data "aws_region" "current" {}
+
+#####################################################
+############### CloudWatch Log Groups ###############
+#####################################################
+resource "aws_cloudwatch_log_group" "ecs_group" {
+  name = "${var.name_prefix}/fargate/${var.cluster_name}/${var.app_name}/"
+
+  tags = var.standard_tags
+}
+
+############################################
+############### ECS Services ###############
+############################################
+resource "aws_ecs_service" "aws_ecs_fargate_service" {
+  name    = "${var.name_prefix}-${var.app_name}"
+  cluster = var.cluster_arn
+  # launch_type = var.launch_type
+  platform_version = var.platform_version
+  propagate_tags   = "SERVICE"
+  
+  tags = merge(var.standard_tags,
+    {
+      Name = var.app_name
+    })
+  
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = var.fargate_weight
+    base              = var.fargate_base
+  }
+  
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = var.fargate_spot_weight
+    base              = var.fargate_spot_base
+  }
+
+  deployment_maximum_percent         = 200
+  deployment_minimum_healthy_percent = 100
+  desired_count                      = var.container_desired_count
+  task_definition                    = aws_ecs_task_definition.fargate_service_task_definition.arn
+
+  health_check_grace_period_seconds = var.health_check_grace_period_seconds
+
+  network_configuration {
+    security_groups = var.security_groups
+    subnets         = var.subnets
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.aws_ecs_fargate_service_target_group.arn
+    container_name   = var.app_name
+    container_port   = var.app_port
+  }
+
+  depends_on = []
+}
+
+####################################################
+############### ECS Task Definitions ###############
+####################################################
+module "fargate_service_ecs_container_definition" {
+  source                       = "cloudposse/ecs-container-definition/aws"
+  version                      = "0.45.2"
+  command                      = var.command
+  container_name               = var.app_name
+  container_image              = var.container_image
+  container_memory             = var.container_memory
+  container_memory_reservation = var.container_memory
+  container_cpu                = var.container_cpu
+  entrypoint                   = coalesce(var.entrypoint, ["uwsgi", "--http", ":${var.app_port}", "--show-config", "--processes", "8", "--threads", "4", "--callable", "app", "--wsgi-file", "wsgi.py", "--lazy-app"])
+  environment = [
+    {
+      name  = "EMG_ENV"
+      value = var.EMG_ENV
+    },
+    {
+      name  = "EMG_SET"
+      value = var.EMG_SET
+    },
+    {
+      name  = "AWS_XRAY_SDK_ENABLED"
+      value = "false"
+    },
+    {
+      name  = "PORT"
+      value = var.app_port
+    }         
+  ]
+  port_mappings = [
+    {
+      containerPort = var.app_port
+      hostPort      = var.app_port
+      protocol      = "tcp"
+    }
+  ]
+  log_configuration = {
+    logDriver     = "awslogs"
+    secretOptions = null
+    options = {
+      "awslogs-group"         = aws_cloudwatch_log_group.ecs_group.name,
+      "awslogs-region"        = data.aws_region.current.name,
+      "awslogs-stream-prefix" = "ecs"
+    }
+  }
+  mount_points                = var.mount_points
+}
+
+
+
+resource "aws_ecs_task_definition" "fargate_service_task_definition" {
+  family                   = "${var.name_prefix}-${var.app_name}"
+  requires_compatibilities = [var.launch_type]
+  network_mode             = "awsvpc"
+  execution_role_arn       = "arn:aws:iam::${var.account}:role/ecsTaskExecutionRole"
+  cpu                      = coalesce(var.task_cpu, var.container_cpu)
+  memory                   = coalesce(var.task_memory, var.container_memory)
+  task_role_arn            = var.task_role_arn
+
+  container_definitions    = jsonencode(concat([module.fargate_service_ecs_container_definition.json_map_object], var.additional_containers))
+  tags                     = var.standard_tags
+
+  dynamic "volume" {
+    for_each = var.volumes
+    content {
+      name = volume.value.name
+
+      dynamic "efs_volume_configuration" {
+        for_each = lookup(volume.value, "efs_volume_configuration", [])
+        content {
+          file_system_id = lookup(efs_volume_configuration.value, "file_system_id", null)
+          root_directory = lookup(efs_volume_configuration.value, "root_directory", null)
+          transit_encryption = "ENABLED"
+        }
+      }
+    }
+  }
+}
+
+####################################################
+############### CloudWAtch Alarms ##################
+####################################################
+
+resource "aws_cloudwatch_metric_alarm" "fargate_service_cpu_high" {
+  alarm_name          = "${var.name_prefix}-fargate-high-cpu-${var.app_name}"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = "2"
+  threshold           = var.container_cpu_high_threshold
+  datapoints_to_alarm = 1
+  statistic           = "Average"
+  period              = "60"
+
+  metric_name = "CPUUtilization"
+  namespace   = "AWS/ECS"
+  dimensions = {
+    ClusterName = var.cluster_name
+    ServiceName = aws_ecs_service.aws_ecs_fargate_service.name
+  }
+
+  alarm_actions = [
+    aws_appautoscaling_policy.fargate_service_scale_up.arn
+  ]
+}
+
+resource "aws_cloudwatch_metric_alarm" "fargate_service_cpu_low" {
+  alarm_name          = "${var.name_prefix}-fargate-low-cpu-${var.app_name}"
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = "2"
+  threshold           = var.container_cpu_low_threshold
+  datapoints_to_alarm = 1
+  statistic           = "Average"
+  period              = "60"
+
+  metric_name = "CPUUtilization"
+  namespace   = "AWS/ECS"
+  dimensions = {
+    ClusterName = var.cluster_name
+    ServiceName = aws_ecs_service.aws_ecs_fargate_service.name
+  }
+
+  alarm_actions = [
+    aws_appautoscaling_policy.fargate_service_scale_down.arn
+  ]
+}
+
+########################################################
+############### Auto Scaling Tagets ####################
+########################################################
+
+resource "aws_appautoscaling_target" "fargate_service_autoscaling_target" {
+  min_capacity       = var.container_min_capacity
+  max_capacity       = var.container_max_capacity
+  resource_id        = "service/${var.cluster_name}/${var.name_prefix}-${var.app_name}"
+  role_arn           = "arn:aws:iam::${var.account}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+########################################################
+############### Auto Scaling Ploicies ##################
+########################################################
+
+resource "aws_appautoscaling_policy" "fargate_service_scale_up" {
+  name               = "scale-up-${var.app_name}"
+  policy_type        = "StepScaling"
+  resource_id        = aws_appautoscaling_target.fargate_service_autoscaling_target.resource_id
+  scalable_dimension = aws_appautoscaling_target.fargate_service_autoscaling_target.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.fargate_service_autoscaling_target.service_namespace
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "ChangeInCapacity"
+    cooldown                = 60
+    metric_aggregation_type = "Maximum"
+
+    step_adjustment {
+      metric_interval_upper_bound = 0
+      scaling_adjustment          = 1
+    }
+  }
+}
+
+resource "aws_appautoscaling_policy" "fargate_service_scale_down" {
+  name               = "scale-down-${var.app_name}"
+  policy_type        = "StepScaling"
+  resource_id        = aws_appautoscaling_target.fargate_service_autoscaling_target.resource_id
+  scalable_dimension = aws_appautoscaling_target.fargate_service_autoscaling_target.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.fargate_service_autoscaling_target.service_namespace
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "ChangeInCapacity"
+    cooldown                = 60
+    metric_aggregation_type = "Maximum"
+
+    step_adjustment {
+      metric_interval_lower_bound = 0
+      scaling_adjustment          = -1
+    }
+  }
+}
+
+####################################################
+######## Target Group & LoadBalancer ###############
+####################################################
+
+data "aws_lb" "passed_on" {
+  arn = var.aws_lb_arn
+}
+
+resource "aws_lb_target_group" "aws_ecs_fargate_service_target_group" {
+  name                          = "${var.name_prefix}-${var.app_name}-tg" # tg == target-group name is limited to 32 chars
+  port                          = var.app_port
+  protocol                      = "HTTP"
+  vpc_id                        = var.vpc_id
+  load_balancing_algorithm_type = "round_robin"
+  target_type                   = "ip"
+
+  ### I'm adding this lifecycle because when change service nave get an error:
+  ### Error deleting Target Group: ResourceInUse: Target group <name> is currently in use by a listener or a rule
+  ### https://stackoverflow.com/questions/57183814/error-deleting-target-group-resourceinuse-when-changing-target-ports-in-aws-thr
+  ### https://github.com/terraform-providers/terraform-provider-aws/issues/636
+  ### https://github.com/terraform-providers/terraform-provider-aws/issues/1315
+  lifecycle {
+    create_before_destroy = true
+    ignore_changes = [name]
+  }
+  
+  health_check {
+    healthy_threshold   = 3
+    unhealthy_threshold = 10
+    timeout             = 5
+    interval            = 10
+    path                = "/health"
+    port                = var.app_port
+  }
+  depends_on = [data.aws_lb.passed_on]
+}
+
+resource "aws_lb_listener" "aws_ecs_fargate_service_aws_lb_listener" {
+  load_balancer_arn = var.aws_lb_arn
+  port              = var.aws_lb_out_port
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS-1-2-Ext-2018-06"
+  certificate_arn   = var.aws_lb_certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.aws_ecs_fargate_service_target_group.arn
+  }
+}
+
+
+resource "aws_lb_listener_rule" "block_header_rule" {
+  listener_arn = aws_lb_listener.aws_ecs_fargate_service_aws_lb_listener.arn
+  priority = 100
+
+  condition {
+      http_header {
+        http_header_name = "X-Forwarded-Host"
+        values           = ["*"]
+      }
+  }
+  action {
+    type = "fixed-response"
+    fixed_response {
+      content_type = "text/plain"
+      message_body = "Invalid host header."
+      status_code = "400"
+    }
+  }
+}
