@@ -47,7 +47,6 @@ resource "aws_ecs_service" "aws_ecs_fargate_service" {
   }
 
   depends_on = []
-  launch_type = var.launch_type
 }
 
 
