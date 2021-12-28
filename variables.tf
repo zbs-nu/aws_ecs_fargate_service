@@ -4,6 +4,7 @@ variable "subnets" {}
 variable "aws_lb_arn" {}
 variable "aws_lb_out_port" {}
 variable "security_groups" {}
+variable "execution_role_arn" {}
 variable "aws_lb_certificate_arn" {}
 
 variable "name_prefix" {

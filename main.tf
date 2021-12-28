@@ -47,7 +47,7 @@ resource "aws_ecs_service" "aws_ecs_fargate_service" {
   }
 
   depends_on = []
-  # launch_type = var.launch_type
+  launch_type = var.launch_type
 }
 
 
@@ -100,7 +100,7 @@ resource "aws_ecs_task_definition" "fargate_service_task_definition" {
   family                   = "${var.name_prefix}-${var.app_name}"
   requires_compatibilities = [var.launch_type]
   network_mode             = "awsvpc"
-  execution_role_arn       = "arn:aws:iam::${var.account}:role/ecsTaskExecutionRole"
+  execution_role_arn       = var.execution_role_arn
   cpu                      = coalesce(var.task_cpu, var.container_cpu)
   memory                   = coalesce(var.task_memory, var.container_memory)
   task_role_arn            = var.task_role_arn
