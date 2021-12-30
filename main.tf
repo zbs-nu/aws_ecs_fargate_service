@@ -171,13 +171,18 @@ resource "aws_cloudwatch_metric_alarm" "fargate_service_cpu_low" {
 # ---------------------------------------------------
 #    Autoscaling
 # ---------------------------------------------------
+resource "time_sleep" "wait" {
+  depends_on      = [aws_ecs_service.aws_ecs_fargate_service]
+  create_duration = "30s"
+}
 resource "aws_appautoscaling_target" "fargate_service_autoscaling_target" {
-  min_capacity       = var.container_min_capacity
-  max_capacity       = var.container_max_capacity
-  resource_id        = "service/${var.cluster_name}/${var.name_prefix}-${var.app_name}"
-  role_arn           = "arn:aws:iam::${var.account}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService"
-  scalable_dimension = "ecs:service:DesiredCount"
-  service_namespace  = "ecs"
+  min_capacity        = var.container_min_capacity
+  max_capacity        = var.container_max_capacity
+  resource_id         = "service/${var.cluster_name}/${var.name_prefix}-${var.app_name}"
+  role_arn            = "arn:aws:iam::${var.account}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService"
+  scalable_dimension  = "ecs:service:DesiredCount"
+  service_namespace   = "ecs"
+  depends_on          = [time_sleep.wait]
 }
 
 resource "aws_appautoscaling_policy" "fargate_service_scale_up" {
