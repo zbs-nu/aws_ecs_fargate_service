@@ -127,4 +127,7 @@ variable "additional_containers" {
   default = []
 }
 
-variable "environment" {}
+variable "environment" {
+  type    = list(any)
+  default = null
+}
