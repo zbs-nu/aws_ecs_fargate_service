@@ -126,3 +126,7 @@ variable "additional_containers" {
   description = "Additional containers definition"
   default = []
 }
+
+variable "environment" {
+  type = map
+}
