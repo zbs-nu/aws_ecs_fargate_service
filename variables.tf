@@ -128,5 +128,5 @@ variable "additional_containers" {
 }
 
 variable "environment" {
-  type = map
+  type = list(any)
 }
