@@ -65,29 +65,7 @@ module "fargate_service_ecs_container_definition" {
   container_cpu                 = var.container_cpu
   mount_points                  = var.mount_points
   entrypoint                    = var.entrypoint
-
-  environment {
-    variables = merge(
-      var.environment,
-    {
-      name  = "PORT"
-      value = var.app_port
-    },
-    {
-      name  = "NAME"
-      value = var.app_name
-    })
-  }
-
-  # environment = merge(var.environment, [
-  #   {
-  #     name  = "PORT"
-  #     value = var.app_port
-  #   },
-  #   {
-  #     name  = "NAME"
-  #     value = var.app_name
-  #   }])
+  environment                   = var.environment
 
   port_mappings = [
     {

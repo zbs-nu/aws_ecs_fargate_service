@@ -132,6 +132,6 @@ variable "environment" {
     name  = string
     value = string
   }))
-  description = ""
+  description = "Task environment variables"
   default     = []
 }
