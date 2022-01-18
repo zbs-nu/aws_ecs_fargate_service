@@ -128,6 +128,10 @@ variable "additional_containers" {
 }
 
 variable "environment" {
-  type    = list(any)
-  default = null
+  type = list(object({
+    name  = string
+    value = string
+  }))
+  description = ""
+  default     = []
 }
