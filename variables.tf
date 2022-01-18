@@ -126,3 +126,12 @@ variable "additional_containers" {
   description = "Additional containers definition"
   default = []
 }
+
+variable "environment" {
+  type = list(object({
+    name  = string
+    value = string
+  }))
+  description = "Task environment variables"
+  default     = []
+}
