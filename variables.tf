@@ -128,6 +128,6 @@ variable "additional_containers" {
 }
 
 variable "environment" {
-  type    = list(any)
+  type    = tuple
   default = null
 }
