@@ -43,6 +43,10 @@ variable "app_port" {
   type    = number
   default = 9999
 }
+variable "container_port" {
+  type    = number
+  default = app_port
+}
 variable "entrypoint" {
   type    = list(string)
   default = null
