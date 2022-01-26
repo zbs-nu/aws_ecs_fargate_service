@@ -70,7 +70,7 @@ module "fargate_service_ecs_container_definition" {
   port_mappings = [
     {
       containerPort = var.app_port
-      hostPort      = var.app_port
+      hostPort      = var.host_port
       protocol      = "tcp"
     }]
 
