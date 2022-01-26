@@ -45,7 +45,7 @@ variable "app_port" {
 }
 variable "host_port" {
   type    = number
-  default = var.app_port
+  default = 5000
 }
 variable "entrypoint" {
   type    = list(string)
