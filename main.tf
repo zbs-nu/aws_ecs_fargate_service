@@ -66,14 +66,6 @@ module "fargate_service_ecs_container_definition" {
   mount_points                  = var.mount_points
   entrypoint                    = var.entrypoint
 
-  dynamic "environment" {
-    for_each = var.environment
-    content {
-      name  = environment.value["name"]
-      value = environment.value["value"]
-    }
-  }
-
   port_mappings = [
     {
       containerPort = var.app_port
@@ -104,6 +96,14 @@ resource "aws_ecs_task_definition" "fargate_service_task_definition" {
 
   container_definitions    = jsonencode(concat([module.fargate_service_ecs_container_definition.json_map_object], var.additional_containers))
   tags                     = var.standard_tags
+
+  dynamic "environment" {
+    for_each = var.environment
+    content {
+      name  = environment.value["name"]
+      value = environment.value["value"]
+    }
+  }
 
   dynamic "volume" {
     for_each = var.volumes
