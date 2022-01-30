@@ -127,11 +127,4 @@ variable "additional_containers" {
   default = []
 }
 
-variable "environment" {
-  type = list(object({
-    name  = string
-    value = string
-  }))
-  description = "Task environment variables"
-  default     = []
-}
+variable "environment" {}
