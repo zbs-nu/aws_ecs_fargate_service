@@ -135,3 +135,7 @@ variable "environment" {
   description = "Task environment variables"
   default     = []
 }
+
+variable "assign_public_ip" {
+  default = false
+}

@@ -22,7 +22,7 @@ resource "aws_ecs_service" "aws_ecs_fargate_service" {
   task_definition                     = aws_ecs_task_definition.fargate_service_task_definition.arn
   health_check_grace_period_seconds   = var.health_check_grace_period_seconds
   tags                                = merge(var.standard_tags, { Name = var.app_name })
-
+  
   capacity_provider_strategy {
     capacity_provider = "FARGATE"
     weight            = var.fargate_weight
@@ -36,8 +36,9 @@ resource "aws_ecs_service" "aws_ecs_fargate_service" {
   }
 
   network_configuration {
-    security_groups = var.security_groups
-    subnets         = var.subnets
+    security_groups  = var.security_groups
+    subnets          = var.subnets
+    assign_public_ip = var.assign_public_ip
   }
 
   load_balancer {
