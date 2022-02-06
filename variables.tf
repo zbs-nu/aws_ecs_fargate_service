@@ -1,6 +1,7 @@
 variable "vpc_id" {}
 variable "account" {}
 variable "subnets" {}
+variable "environment" {}
 variable "aws_lb_arn" {}
 variable "aws_lb_out_port" {}
 variable "security_groups" {}
@@ -125,15 +126,6 @@ variable "volumes" {
 variable "additional_containers" {
   description = "Additional containers definition"
   default = []
-}
-
-variable "environment" {
-  type = list(object({
-    name  = string
-    value = string
-  }))
-  description = "Task environment variables"
-  default     = []
 }
 
 variable "assign_public_ip" {
