@@ -1,6 +1,7 @@
 variable "vpc_id" {}
 variable "account" {}
 variable "subnets" {}
+variable "environment" {}
 variable "aws_lb_arn" {}
 variable "aws_lb_out_port" {}
 variable "security_groups" {}
@@ -127,4 +128,6 @@ variable "additional_containers" {
   default = []
 }
 
-variable "environment" {}
+variable "assign_public_ip" {
+  default = false
+}
