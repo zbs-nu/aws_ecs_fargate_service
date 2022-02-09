@@ -101,6 +101,15 @@ variable "platform_version" {
   default = "1.4.0" # Before: "LATEST"
 }
 
+variable "additional_containers" {
+  description = "Additional containers definition"
+  default = []
+}
+
+variable "public" {
+  default = false
+}
+
 variable "mount_points" {
   type = list(object({
     containerPath = string
@@ -121,13 +130,4 @@ variable "volumes" {
   }))
   description = "Task volume definitions as list of configuration objects"
   default     = []
-}
-
-variable "additional_containers" {
-  description = "Additional containers definition"
-  default = []
-}
-
-variable "assign_public_ip" {
-  default = false
 }
