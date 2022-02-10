@@ -107,7 +107,7 @@ variable "additional_containers" {
 }
 
 variable "s3_log_bucket" {
-  default = string
+  type = string
 }
 
 variable "public" {
