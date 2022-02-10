@@ -2,6 +2,7 @@ variable "vpc_id" {}
 variable "account" {}
 variable "subnets" {}
 variable "environment" {}
+variable "domain_name" {}
 variable "aws_lb_arn" {}
 variable "aws_lb_out_port" {}
 variable "security_groups" {}
