@@ -284,7 +284,7 @@ resource "aws_lb" "public" {
   subnets             = var.subnets
 
   access_logs {
-    bucket  = data.terraform_remote_state.lb.outputs.s3_log_bucket
+    bucket  = var.s3_log_bucket
     prefix  = "${var.app_name}_lb"
     enabled = true
   }
