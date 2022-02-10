@@ -1,9 +1,9 @@
 output "load_balancer_arn" {
-    value = aws_lb.public.*..arn
+    value = aws_lb.public.*.arn
 }
 
 output "load_balancer_fqdn" {
-    value = aws_lb.public.*..dns_name
+    value = aws_lb.public.*.dns_name
 }
 
 output "name" {
