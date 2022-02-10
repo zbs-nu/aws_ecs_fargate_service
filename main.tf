@@ -296,7 +296,7 @@ resource "aws_lb" "public" {
 }
 
 resource "aws_lb_listener" "public" {
-  load_balancer_arn = aws_lb.public[count.index].arn
+  load_balancer_arn = aws_lb.public.*.arn
   port              = 80
   protocol          = "HTTP"
   depends_on        = [aws_lb.public]
@@ -342,5 +342,5 @@ resource "aws_route53_record" "main" {
   name    = "${var.name_prefix}-${var.app_name}"
   type    = "CNAME"
   ttl     = 300
-  records = [aws_lb.public[count.index].dns_name]
+  records = [aws_lb.public.*.dns_name]
 }
