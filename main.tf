@@ -55,7 +55,7 @@ resource "aws_ecs_service" "aws_ecs_fargate_service" {
 # ---------------------------------------------------
 module "fargate_service_ecs_container_definition" {
   source                        = "cloudposse/ecs-container-definition/aws"
-  version                       = "0.45.2"
+  version                       = "0.58.1"
   command                       = var.command
   container_name                = var.app_name
   container_image               = var.container_image
