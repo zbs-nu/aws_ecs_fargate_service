@@ -3,7 +3,7 @@ output "load_balancer_arn" {
 }
 
 output "load_balancer_fqdn" {
-    value = var.public == true ? aws_lb.public[0].fqdn : null
+    value = var.public == true ? aws_lb.public[0].dns_name : null
 }
 
 # output "name" {
