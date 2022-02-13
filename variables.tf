@@ -2,6 +2,7 @@ variable "vpc_id" {}
 variable "account" {}
 variable "subnets" {}
 variable "environment" {}
+variable "domain_name" {}
 variable "aws_lb_arn" {}
 variable "aws_lb_out_port" {}
 variable "security_groups" {}
@@ -101,6 +102,19 @@ variable "platform_version" {
   default = "1.4.0" # Before: "LATEST"
 }
 
+variable "additional_containers" {
+  description = "Additional containers definition"
+  default = []
+}
+
+variable "s3_log_bucket" {
+  type = string
+}
+
+variable "public" {
+  default = false
+}
+
 variable "mount_points" {
   type = list(object({
     containerPath = string
@@ -121,13 +135,4 @@ variable "volumes" {
   }))
   description = "Task volume definitions as list of configuration objects"
   default     = []
-}
-
-variable "additional_containers" {
-  description = "Additional containers definition"
-  default = []
-}
-
-variable "assign_public_ip" {
-  default = false
 }

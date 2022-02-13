@@ -7,7 +7,6 @@ resource "aws_cloudwatch_log_group" "ecs_group" {
 }
 
 
-
 # ---------------------------------------------------
 #    ECS Service
 # ---------------------------------------------------
@@ -38,7 +37,7 @@ resource "aws_ecs_service" "aws_ecs_fargate_service" {
   network_configuration {
     security_groups  = var.security_groups
     subnets          = var.subnets
-    assign_public_ip = var.assign_public_ip
+    assign_public_ip = var.public
   }
 
   load_balancer {
@@ -49,7 +48,6 @@ resource "aws_ecs_service" "aws_ecs_fargate_service" {
 
   depends_on = []
 }
-
 
 
 # ---------------------------------------------------
@@ -66,7 +64,17 @@ module "fargate_service_ecs_container_definition" {
   container_cpu                 = var.container_cpu
   mount_points                  = var.mount_points
   entrypoint                    = var.entrypoint
-  environment                   = var.environment
+  environment                   = setunion(var.environment, 
+  [
+    {
+      name  = "PORT"
+      value = var.app_port
+    },
+    {
+      name  = "APP_PORT"
+      value = var.app_port
+    }
+  ])
 
   port_mappings = [
     {
@@ -115,6 +123,7 @@ resource "aws_ecs_task_definition" "fargate_service_task_definition" {
   }
 }
 
+
 # ---------------------------------------------------
 #    CloudWatch Alarms for ASG
 # ---------------------------------------------------
@@ -159,6 +168,7 @@ resource "aws_cloudwatch_metric_alarm" "fargate_service_cpu_low" {
     aws_appautoscaling_policy.fargate_service_scale_down.arn
   ]
 }
+
 
 # ---------------------------------------------------
 #    Autoscaling
@@ -215,8 +225,9 @@ resource "aws_appautoscaling_policy" "fargate_service_scale_down" {
   }
 }
 
+
 # ---------------------------------------------------
-#    Load Balancing
+#    Internal Load Balancer - If Private Subnet
 # ---------------------------------------------------
 resource "aws_lb_target_group" "aws_ecs_fargate_service_target_group" {
   name                          = "${var.name_prefix}-${var.app_name}-tg"
@@ -250,7 +261,6 @@ resource "aws_lb_listener" "aws_ecs_fargate_service_aws_lb_listener" {
   }
 }
 
-
 resource "aws_lb_listener_rule" "block_header_rule" {
   listener_arn = aws_lb_listener.aws_ecs_fargate_service_aws_lb_listener.arn
   priority = 100
@@ -267,7 +277,83 @@ resource "aws_lb_listener_rule" "block_header_rule" {
     fixed_response {
       content_type  = "text/plain"
       message_body  = "Invalid host header."
-      status_code   = "400"
+      status_code   = 400
     }
   }
+}
+
+
+# ---------------------------------------------------
+#    Public Load Balancer - If Public Subnet
+# ---------------------------------------------------
+resource "aws_lb" "public" {
+  count               = var.public == true ? 1 : 0
+  name                = "${var.name_prefix}-Pub-${var.app_name}-LB"
+  load_balancer_type  = "application"
+  security_groups     = var.security_groups
+  subnets             = var.subnets
+
+  access_logs {
+    bucket  = var.s3_log_bucket
+    prefix  = "${var.app_name}_lb"
+    enabled = true
+  }
+
+  tags = merge(
+    var.standard_tags,
+    tomap({ Name = "Public-${var.app_name}" })
+  )
+}
+
+resource "aws_lb_listener" "public" {
+  count             = var.public == true ? 1 : 0
+  load_balancer_arn = aws_lb.public[0].arn
+  port              = 80
+  protocol          = "HTTP"
+  depends_on        = [aws_lb.public]
+
+  default_action {
+    type = "redirect"
+
+    redirect {
+      port        = 443
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "block_header" {
+  count         = var.public == true ? 1 : 0
+  listener_arn  = aws_lb_listener.public[0].arn
+  priority      = 100
+  depends_on    = [aws_lb.public]
+
+  condition {
+      http_header {
+        http_header_name = "X-Forwarded-Host"
+        values           = ["*"]
+      }
+  }
+  action {
+    type = "fixed-response"
+    fixed_response {
+      content_type = "text/plain"
+      message_body = "Invalid host header."
+      status_code = 400
+    }
+  }
+}
+
+
+# ---------------------------------------------------
+#    DNS Record (CNAME)
+# ---------------------------------------------------
+resource "aws_route53_record" "main" {
+  count   = var.public == true ? 1 : 0
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = "${var.name_prefix}-${var.app_name}"
+  type    = "CNAME"
+  ttl     = 300
+  records = [aws_lb.public[0].dns_name]
 }
