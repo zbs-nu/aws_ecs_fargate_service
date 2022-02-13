@@ -6,13 +6,13 @@ output "load_balancer_fqdn" {
     value = var.public == true ? aws_lb.public[0].dns_name : null
 }
 
-# output "name" {
-#     value = aws_route53_record.main[0].name
-# }
+output "name" {
+    value = var.public == true ? aws_route53_record.main[0].name : null
+}
 
-# output "fqdn" {
-#     value = aws_route53_record.main[0].fqdn
-# }
+output "fqdn" {
+    value = var.public == true ? aws_route53_record.main[0].fqdn : null
+}
 
 output "app_port" {
     value = var.app_port
