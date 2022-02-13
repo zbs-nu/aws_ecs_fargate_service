@@ -64,7 +64,17 @@ module "fargate_service_ecs_container_definition" {
   container_cpu                 = var.container_cpu
   mount_points                  = var.mount_points
   entrypoint                    = var.entrypoint
-  environment                   = var.environment
+  environment                   = setunion(var.environment, 
+  [
+    {
+      name  = "PORT"
+      value = var.app_port
+    },
+    {
+      name  = "APP_PORT"
+      value = var.app_port
+    }
+  ])
 
   port_mappings = [
     {
