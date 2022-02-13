@@ -17,3 +17,7 @@ output "fqdn" {
 output "app_port" {
     value = var.app_port
 }
+
+output cloudwatch_log_group_name {
+    value = aws_cloudwatch_log_group.ecs_group.name
+}
