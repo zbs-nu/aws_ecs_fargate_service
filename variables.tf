@@ -9,6 +9,8 @@ variable "security_groups" {}
 variable "execution_role_arn" {}
 variable "aws_lb_certificate_arn" {}
 
+variable logdna_key {}
+
 variable "name_prefix" {
   type = string
 }

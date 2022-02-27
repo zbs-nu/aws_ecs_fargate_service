@@ -95,6 +95,46 @@ module "fargate_service_ecs_container_definition" {
 }
 
 
+# ---------------------------------------------------
+#     Container - Logs
+# ---------------------------------------------------
+module "logs_container_definition" {
+  source  = "cloudposse/ecs-container-definition/aws"
+  version = "0.58.1"
+
+  container_name  = "logdna"
+  container_image = "logdna/logspout:latest"
+
+  environment = [
+    {
+      name  = "LOGDNA_KEY"
+      value = var.logdna_key
+    },
+    {
+      name  = "TAGS"
+      value = "${var.name_prefix}, ${data.aws_region.current.name}, ${var.service_name}"
+    }]
+
+  mount_points = [
+    {
+      readOnly      : true,
+      containerPath : "/var/run/docker.sock",
+      sourceVolume  : "logdna"
+    }
+  ]
+
+  log_configuration = {
+    logDriver     = "awslogs"
+    secretOptions = null
+    options = {
+      "awslogs-group"         = aws_cloudwatch_log_group.ecs_group.name
+      "awslogs-region"        = data.aws_region.current.name
+      "awslogs-stream-prefix" = "ecs"
+    }
+  }
+}
+
+
 resource "aws_ecs_task_definition" "fargate_service_task_definition" {
   family                   = "${var.name_prefix}-${var.app_name}"
   requires_compatibilities = [var.launch_type]
@@ -104,8 +144,13 @@ resource "aws_ecs_task_definition" "fargate_service_task_definition" {
   memory                   = coalesce(var.task_memory, var.container_memory)
   task_role_arn            = var.task_role_arn
 
-  container_definitions    = jsonencode(concat([module.fargate_service_ecs_container_definition.json_map_object], var.additional_containers))
+  container_definitions     = "[${module.fargate_service_ecs_container_definition.json_map_encoded}, ${module.logs_container_definition.json_map_encoded}]"
   tags                     = var.standard_tags
+
+  volume {
+    name      = "logdna"
+    host_path = "/var/run/docker.sock"
+  }
 
   dynamic "volume" {
     for_each = var.volumes
