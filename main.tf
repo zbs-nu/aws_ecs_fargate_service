@@ -112,7 +112,7 @@ module "logs_container_definition" {
     },
     {
       name  = "TAGS"
-      value = "${var.name_prefix}, ${data.aws_region.current.name}, ${var.service_name}"
+      value = "${var.name_prefix}, ${data.aws_region.current.name}, ${var.app_name}"
     }]
 
   mount_points = [
