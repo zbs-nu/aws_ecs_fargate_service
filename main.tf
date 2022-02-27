@@ -148,7 +148,7 @@ resource "aws_ecs_task_definition" "fargate_service_task_definition" {
   tags                     = var.standard_tags
 
   volume {
-    name      = "logdna"
+    name = "logdna"
     host_path = "/var/run/docker.sock"
   }
 }
