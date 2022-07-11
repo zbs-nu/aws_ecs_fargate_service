@@ -1,7 +1,7 @@
 # ---------------------------------------------------
 #    CloudWatch Log Groups
 # ---------------------------------------------------
-resource "aws_cloudwatch_log_group" "ecs_group" {
+resource aws_cloudwatch_log_group ecs_group {
   name = "${var.name_prefix}/fargate/${var.cluster_name}/${var.app_name}/"
   tags = var.standard_tags
 }
@@ -10,7 +10,7 @@ resource "aws_cloudwatch_log_group" "ecs_group" {
 # ---------------------------------------------------
 #    ECS Service
 # ---------------------------------------------------
-resource "aws_ecs_service" "aws_ecs_fargate_service" {
+resource aws_ecs_service aws_ecs_fargate_service {
   name                                = "${var.name_prefix}-${var.app_name}"
   cluster                             = var.cluster_arn
   platform_version                    = var.platform_version
@@ -45,15 +45,13 @@ resource "aws_ecs_service" "aws_ecs_fargate_service" {
     container_name   = var.app_name
     container_port   = var.app_port
   }
-
-  depends_on = []
 }
 
 
 # ---------------------------------------------------
 #    ECS Task Definition
 # ---------------------------------------------------
-module "fargate_service_ecs_container_definition" {
+module fargate_service_ecs_container_definition {
   source                        = "cloudposse/ecs-container-definition/aws"
   version                       = "0.58.1"
   command                       = var.command
@@ -94,8 +92,7 @@ module "fargate_service_ecs_container_definition" {
   }
 }
 
-
-resource "aws_ecs_task_definition" "fargate_service_task_definition" {
+resource aws_ecs_task_definition fargate_service_task_definition {
   family                   = "${var.name_prefix}-${var.app_name}"
   requires_compatibilities = [var.launch_type]
   network_mode             = "awsvpc"
@@ -127,7 +124,7 @@ resource "aws_ecs_task_definition" "fargate_service_task_definition" {
 # ---------------------------------------------------
 #    CloudWatch Alarms for ASG
 # ---------------------------------------------------
-resource "aws_cloudwatch_metric_alarm" "fargate_service_cpu_high" {
+resource aws_cloudwatch_metric_alarm fargate_service_cpu_high {
   alarm_name          = "${var.name_prefix}-fargate-high-cpu-${var.app_name}"
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = "2"
@@ -148,7 +145,7 @@ resource "aws_cloudwatch_metric_alarm" "fargate_service_cpu_high" {
   ]
 }
 
-resource "aws_cloudwatch_metric_alarm" "fargate_service_cpu_low" {
+resource aws_cloudwatch_metric_alarm fargate_service_cpu_low {
   alarm_name          = "${var.name_prefix}-fargate-low-cpu-${var.app_name}"
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = "2"
@@ -173,11 +170,12 @@ resource "aws_cloudwatch_metric_alarm" "fargate_service_cpu_low" {
 # ---------------------------------------------------
 #    Autoscaling
 # ---------------------------------------------------
-resource "time_sleep" "wait" {
+resource time_sleep wait {
   depends_on      = [aws_ecs_service.aws_ecs_fargate_service]
   create_duration = "30s"
 }
-resource "aws_appautoscaling_target" "fargate_service_autoscaling_target" {
+
+resource aws_appautoscaling_target fargate_service_autoscaling_target {
   min_capacity        = var.container_min_capacity
   max_capacity        = var.container_max_capacity
   resource_id         = "service/${var.cluster_name}/${var.name_prefix}-${var.app_name}"
@@ -187,7 +185,7 @@ resource "aws_appautoscaling_target" "fargate_service_autoscaling_target" {
   depends_on          = [time_sleep.wait]
 }
 
-resource "aws_appautoscaling_policy" "fargate_service_scale_up" {
+resource aws_appautoscaling_policy fargate_service_scale_up {
   name               = "scale-up-${var.app_name}"
   policy_type        = "StepScaling"
   resource_id        = aws_appautoscaling_target.fargate_service_autoscaling_target.resource_id
@@ -206,7 +204,7 @@ resource "aws_appautoscaling_policy" "fargate_service_scale_up" {
   }
 }
 
-resource "aws_appautoscaling_policy" "fargate_service_scale_down" {
+resource aws_appautoscaling_policy fargate_service_scale_down {
   name               = "scale-down-${var.app_name}"
   policy_type        = "StepScaling"
   resource_id        = aws_appautoscaling_target.fargate_service_autoscaling_target.resource_id
@@ -229,7 +227,7 @@ resource "aws_appautoscaling_policy" "fargate_service_scale_down" {
 # ---------------------------------------------------
 #    Internal Load Balancer - If Private Subnet
 # ---------------------------------------------------
-resource "aws_lb_target_group" "aws_ecs_fargate_service_target_group" {
+resource aws_lb_target_group aws_ecs_fargate_service_target_group {
   name                          = "${var.name_prefix}-${var.app_name}-tg"
   port                          = var.app_port
   protocol                      = "HTTP"
@@ -248,7 +246,7 @@ resource "aws_lb_target_group" "aws_ecs_fargate_service_target_group" {
   }
 }
 
-resource "aws_lb_listener" "aws_ecs_fargate_service_aws_lb_listener" {
+resource aws_lb_listener aws_ecs_fargate_service_aws_lb_listener {
   load_balancer_arn = var.aws_lb_arn
   port              = var.aws_lb_out_port
   protocol          = "HTTPS"
@@ -286,7 +284,7 @@ resource "aws_lb_listener_rule" "block_header_rule" {
 # ---------------------------------------------------
 #    Public Load Balancer - If Public Subnet
 # ---------------------------------------------------
-resource "aws_lb" "public" {
+resource aws_lb public {
   count               = var.public == true ? 1 : 0
   name                = "${var.name_prefix}-Pub-${var.app_name}-LB"
   load_balancer_type  = "application"
@@ -305,7 +303,7 @@ resource "aws_lb" "public" {
   )
 }
 
-resource "aws_lb_listener" "public" {
+resource aws_lb_listener public {
   count             = var.public == true ? 1 : 0
   load_balancer_arn = aws_lb.public[0].arn
   port              = 80
@@ -323,7 +321,7 @@ resource "aws_lb_listener" "public" {
   }
 }
 
-resource "aws_lb_listener_rule" "block_header" {
+resource aws_lb_listener_rule block_header {
   count         = var.public == true ? 1 : 0
   listener_arn  = aws_lb_listener.public[0].arn
   priority      = 100
@@ -349,7 +347,7 @@ resource "aws_lb_listener_rule" "block_header" {
 # ---------------------------------------------------
 #    DNS Record (CNAME)
 # ---------------------------------------------------
-resource "aws_route53_record" "main" {
+resource aws_route53_record main {
   count   = var.public == true ? 1 : 0
   zone_id = data.aws_route53_zone.main.zone_id
   name    = "${var.name_prefix}-${var.app_name}"

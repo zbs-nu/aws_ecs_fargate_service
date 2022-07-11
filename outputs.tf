@@ -1,20 +1,20 @@
-output "load_balancer_arn" {
+output load_balancer_arn {
     value = var.public == true ? aws_lb.public[0].arn : null
 }
 
-output "load_balancer_fqdn" {
+output load_balancer_fqdn {
     value = var.public == true ? aws_lb.public[0].dns_name : null
 }
 
-output "name" {
+output name {
     value = var.public == true ? aws_route53_record.main[0].name : null
 }
 
-output "fqdn" {
+output fqdn {
     value = var.public == true ? aws_route53_record.main[0].fqdn : null
 }
 
-output "app_port" {
+output app_port {
     value = var.app_port
 }
 
